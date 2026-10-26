@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
+import posthog from 'posthog-js';
 import { Button, Message, Composer } from './components.jsx';
 import { welcome, replyTo } from './replies.js';
+import { posthogLog } from './posthog-logger.js';
 
 export default function App() {
   const [messages, setMessages] = useState([welcome]);
@@ -12,11 +14,32 @@ export default function App() {
     if (log) log.scrollTop = log.scrollHeight;
   }, [messages]);
 
+  function captureEvent(event, properties) {
+    if (import.meta.env.VITE_POSTHOG_KEY && import.meta.env.VITE_POSTHOG_HOST) {
+      posthog.capture(event, properties);
+    }
+  }
+
   function send(text) {
+    captureEvent('chat_question_submitted');
     setMessages(current => [...current,
       { id: crypto.randomUUID(), role: 'user', text },
       { id: crypto.randomUUID(), role: 'assistant', ...replyTo(text) }
     ]);
+    posthogLog.info('chat response generated', { response_source: 'local_rules' });
+  }
+
+  function toggleTheme() {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    captureEvent('theme_toggled', { theme: nextTheme });
+    posthogLog.info('theme changed', { theme: nextTheme });
+  }
+
+  function resetChat() {
+    setMessages([welcome]);
+    captureEvent('chat_reset');
+    posthogLog.info('chat reset');
   }
 
   return <main className="app" data-theme={theme}>
@@ -28,7 +51,7 @@ export default function App() {
             variant="secondary"
             aria-label={`Skift til ${theme === 'light' ? 'mørkt' : 'lyst'} tema`}
             title={`Skift til ${theme === 'light' ? 'mørkt' : 'lyst'} tema`}
-            onClick={() => setTheme(current => current === 'light' ? 'dark' : 'light')}
+            onClick={toggleTheme}
           >
             <span className="theme-button-content">
               <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
@@ -40,7 +63,7 @@ export default function App() {
               {theme === 'light' ? 'Lyst' : 'Mørkt'}
             </span>
           </Button>
-          <Button variant="secondary" onClick={() => setMessages([welcome])}>Ny samtale</Button>
+          <Button variant="secondary" onClick={resetChat}>Ny samtale</Button>
         </div>
       </header>
       <nav className="learning-links" aria-label="React-demonstrationer">

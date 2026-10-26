@@ -1,8 +1,21 @@
 import React, { useState } from 'react';
+import posthog from 'posthog-js';
 import './token-types-slide.css';
 
 export default function TokenTypesSlide() {
   const [actionToken, setActionToken] = useState('--jade-600');
+
+  function changeActionToken(event) {
+    const selectedToken = event.target.value;
+    setActionToken(selectedToken);
+    if (import.meta.env.VITE_POSTHOG_KEY && import.meta.env.VITE_POSTHOG_HOST) {
+      posthog.capture('token_reference_changed', {
+        selected_token: selectedToken,
+        demo: 'token_types',
+      });
+    }
+  }
+
   return <main className="token-slide" style={{ '--color-action': 'var(' + actionToken + ')' }}>
     <a href="?">Tilbage til chatbotten</a>
     <h1>Primitive og semantiske tokens</h1>
@@ -20,7 +33,7 @@ export default function TokenTypesSlide() {
     </div>
     <section className="token-slide-demo" aria-label="Afprøv en fælles designændring">
       <label htmlFor="primitive-value">Vælg den primitive token til --color-action</label>
-      <select id="primitive-value" value={actionToken} onChange={event => setActionToken(event.target.value)}>
+      <select id="primitive-value" value={actionToken} onChange={changeActionToken}>
         <option value="--jade-600">Jade Green · #3a646d</option>
         <option value="--neutral-800">Mørk neutral · #182230</option>
       </select>
